@@ -42,3 +42,7 @@ Encryption Key
 # Disclaimer
 
 The encryption key is generated based on the machine's ID (On linux) or on the MAC adress (On Windows) to ensure security so the file cant be used on another os or on another computer.
+
+# Compliance
+
+This program complies with YAENSS (https://gist.github.com/VPeti1/f2065d7fcdcd018aae0904725bb8e846)
