@@ -57,7 +57,7 @@ func main() {
 	exec.Command("sudo", "rm", "-rf", "/usr/pama/").Run()
 	exec.Command("sudo", "rm", "-rf", "/usr/bin/pama").Run()
 	exec.Command("sudo", "mkdir", "/usr/pama").Run()
-	exec.Command("sudo", "git", "clone", "https://github.com/VPeti1/GoHash.git", "/usr/flex").Run()
+	exec.Command("sudo", "git", "clone", "https://github.com/VPeti1/Pama.git", "/usr/pama").Run()
 	exec.Command("sudo", "go", "build", "/usr/pama/main.go").Run()
 	exec.Command("sudo", "cp", "main", "/usr/bin/pama").Run()
 	fmt.Printf("%s Installer Completed!\n", appName)
