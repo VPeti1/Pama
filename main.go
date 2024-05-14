@@ -96,9 +96,13 @@ func isRoot() bool {
 }
 
 func main() {
-	if !isRoot() {
-		fmt.Println("To acces the password mananger you need root permissions!")
-		os.Exit(1)
+	if detectOS() == "linux" {
+		if !isRoot() {
+			fmt.Println("To acces the password mananger you need root permissions!")
+			os.Exit(1)
+		}
+	} else {
+		passwordFile = "C:\\pama.db"
 	}
 	// Check if the password file exists; if not, create it
 	if _, err := os.Stat(passwordFile); os.IsNotExist(err) {
