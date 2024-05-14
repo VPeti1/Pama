@@ -8,59 +8,40 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"log"
+	"net"
 	"os"
-	"os/user"
 	"strings"
 
 	"github.com/howeyc/gopass"
 )
 
 // Set the path for the password file
-var passwordFile = "/usr/pama.db"
+var passwordFile = "C:\\pama.db"
 
 // Function to get the machine ID and generate a valid AES key
-func getidforenc() []byte {
-	// Open the /etc/machine-id file
-	file, err := os.Open("/etc/machine-id")
+func getIDForEncryption() (string, error) {
+	// Get the MAC address of the first non-loopback network interface
+	interfaces, err := net.Interfaces()
 	if err != nil {
-		fmt.Println("Error:", err)
-		return nil
-	}
-	defer file.Close()
-
-	// Read the content of /etc/machine-id file
-	machineID := make([]byte, 100) // Adjust the buffer size accordingly
-	_, err = file.Read(machineID)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil
+		return "", err
 	}
 
-	// Compute SHA-256 hash of the machine ID
-	hash := sha256.New()
-	hash.Write(machineID)
-	hashBytes := hash.Sum(nil)
+	for _, intf := range interfaces {
+		if intf.Flags&net.FlagLoopback == 0 && intf.HardwareAddr != nil {
+			return strings.Replace(intf.HardwareAddr.String(), ":", "", -1), nil
+		}
+	}
 
-	// Take the first 32 bytes of the hash as the AES key
-	aesKey := hashBytes[:32]
-
-	return aesKey
+	return "", fmt.Errorf("MAC address not found")
 }
 
-func isRoot() bool {
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatalf("[isRoot] Unable to get current user: %s", err)
-	}
-	return currentUser.Username == "root"
+// Function to generate a key from the machine ID
+func generateKey(machineID string) []byte {
+	hash := sha256.Sum256([]byte(machineID))
+	return hash[:]
 }
 
 func main() {
-	if !isRoot() {
-		fmt.Println("To acces the password mananger you need root permissions!")
-		os.Exit(1)
-	}
 	// Check if the password file exists; if not, create it
 	if _, err := os.Stat(passwordFile); os.IsNotExist(err) {
 		_, err := os.Create(passwordFile)
@@ -177,7 +158,12 @@ func listPasswords() {
 
 // Encrypt function
 func encrypt(data []byte) (string, error) {
-	key := getidforenc()
+	machineID, err := getIDForEncryption()
+	if err != nil {
+		return "", err
+	}
+
+	key := generateKey(machineID)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -200,7 +186,12 @@ func encrypt(data []byte) (string, error) {
 
 // Decrypt function
 func decrypt(encrypted string) (string, error) {
-	key := getidforenc()
+	machineID, err := getIDForEncryption()
+	if err != nil {
+		return "", err
+	}
+
+	key := generateKey(machineID)
 
 	// Decode the base64-encoded ciphertext
 	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
