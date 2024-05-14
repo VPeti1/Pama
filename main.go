@@ -9,8 +9,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/user"
+	"runtime"
 	"strings"
 
 	"github.com/howeyc/gopass"
@@ -19,8 +21,45 @@ import (
 // Set the path for the password file
 var passwordFile = "/usr/pama.db"
 
+func detectOS() string {
+	if runtime.GOOS == "linux" {
+		return "linux"
+	}
+	return "windows"
+}
+
+func getid() (ret []byte) {
+	if detectOS() == "linux" {
+		ret := getidforencl()
+		return ret
+	} else {
+		rets, err := getIDForEncryptionw()
+		if err != nil {
+			return
+		}
+		ret := []byte(rets)
+		return ret
+	}
+}
+
+func getIDForEncryptionw() (string, error) {
+	// Get the MAC address of the first non-loopback network interface
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	for _, intf := range interfaces {
+		if intf.Flags&net.FlagLoopback == 0 && intf.HardwareAddr != nil {
+			return strings.Replace(intf.HardwareAddr.String(), ":", "", -1), nil
+		}
+	}
+
+	return "", fmt.Errorf("MAC address not found")
+}
+
 // Function to get the machine ID and generate a valid AES key
-func getidforenc() []byte {
+func getidforencl() []byte {
 	// Open the /etc/machine-id file
 	file, err := os.Open("/etc/machine-id")
 	if err != nil {
@@ -177,7 +216,7 @@ func listPasswords() {
 
 // Encrypt function
 func encrypt(data []byte) (string, error) {
-	key := getidforenc()
+	key := getid()
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -200,7 +239,7 @@ func encrypt(data []byte) (string, error) {
 
 // Decrypt function
 func decrypt(encrypted string) (string, error) {
-	key := getidforenc()
+	key := getid()
 
 	// Decode the base64-encoded ciphertext
 	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
